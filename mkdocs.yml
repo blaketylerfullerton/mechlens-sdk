@@ -1,5 +1,7 @@
 site_name: MechLens SDK
 site_description: Record comparable mechanistic-interpretability experiments from your existing Python code.
+site_url: https://blaketylerfullerton.github.io/mechlens-sdk/
+repo_url: https://github.com/blaketylerfullerton/mechlens-sdk
 strict: true
 
 nav:
@@ -41,6 +43,23 @@ markdown_extensions:
 
 plugins:
   - search
+  # llms.txt indexes the pages for coding agents; llms-full.txt is every page as one Markdown file.
+  - llmstxt:
+      full_output: llms-full.txt
+      markdown_description: >
+        The MechLens SDK (`pip install mechlens`) records a baseline and an intervention run
+        from existing Python experiment code and uploads them to MechLens Cloud, which checks
+        that the runs are comparable and helps publish a finding. Record the same fields in
+        both runs, use the same project and stable example IDs, and change only the intervention.
+      sections:
+        Getting started:
+          - index.md: What the SDK does and how runs become a finding
+          - quickstart.md: Install, authenticate, record a baseline and an intervention run
+        Recording comparable runs:
+          - comparable-runs.md: Which fields to record in both runs and why
+          - integrity-checks.md: What Cloud's comparison checks verify, and what they do not
+        Reference:
+          - reference.md: start_run, Run, errors, and environment variables
   - autorefs
   - mkdocstrings:
       handlers:

@@ -33,7 +33,7 @@ Issues = "https://github.com/blaketylerfullerton/mechlens-sdk/issues"
 
 [project.optional-dependencies]
 test = ["pytest>=8,<9"]
-docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.7,<10", "mkdocstrings-python>=2,<3", "ruff"]
+docs = ["mkdocs>=1.6,<2", "mkdocs-material>=9.7,<10", "mkdocstrings-python>=2,<3", "mkdocs-llmstxt>=0.5,<1", "ruff"]
 
 [tool.setuptools.dynamic]
 version = { attr = "mechlens._version.__version__" }
