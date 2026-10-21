@@ -6,6 +6,7 @@ from typing import Any
 
 import httpx
 
+from ._version import __version__
 from .errors import MechLensUploadError
 
 # Statuses where sending the same run again cannot succeed.
@@ -87,7 +88,7 @@ class CloudClient:
                     headers={
                         "Authorization": f"Bearer {self.api_key}",
                         "Idempotency-Key": run_id,
-                        "User-Agent": "mechlens-python/0.1.0",
+                        "User-Agent": f"mechlens-python/{__version__}",
                     },
                 )
                 response.raise_for_status()

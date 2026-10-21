@@ -21,9 +21,9 @@ jobs:
       - name: Check the tag matches the package version
         if: github.ref_type == 'tag'
         run: |
-          version=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          version=$(python -c "import mechlens; print(mechlens.__version__)")
           if [ "v$version" != "$GITHUB_REF_NAME" ]; then
-            echo "Tag $GITHUB_REF_NAME does not match pyproject.toml version $version"
+            echo "Tag $GITHUB_REF_NAME does not match mechlens.__version__ $version"
             exit 1
           fi
       - run: python -m build

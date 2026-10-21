@@ -9,14 +9,6 @@ intervention run side by side in MechLens Cloud.
 pip install mechlens
 ```
 
-!!! note "Not on PyPI yet"
-    Until the package is published, install it from a checkout of the SDK
-    repository:
-
-    ```bash
-    pip install -e path/to/mechlens-sdk
-    ```
-
 The SDK needs Python 3.10 or later.
 
 ## 2. Connect to your workspace
