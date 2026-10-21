@@ -89,9 +89,15 @@ examples whose behavior changed.
 
 ## Documentation
 
-- [Quickstart](https://github.com/blaketylerfullerton/mechlens-sdk/blob/main/docs/quickstart.md)
-- [Recording a comparable pair](https://github.com/blaketylerfullerton/mechlens-sdk/blob/main/docs/comparable-runs.md)
-- [What the comparison checks mean](https://github.com/blaketylerfullerton/mechlens-sdk/blob/main/docs/integrity-checks.md)
+Full docs: **https://blaketylerfullerton.github.io/mechlens-sdk/**
+
+- [Quickstart](https://blaketylerfullerton.github.io/mechlens-sdk/quickstart/)
+- [Recording a comparable pair](https://blaketylerfullerton.github.io/mechlens-sdk/comparable-runs/)
+- [What the comparison checks mean](https://blaketylerfullerton.github.io/mechlens-sdk/integrity-checks/)
+- [API reference](https://blaketylerfullerton.github.io/mechlens-sdk/reference/)
+
+Using a coding agent? Point it at [`llms-full.txt`](https://blaketylerfullerton.github.io/mechlens-sdk/llms-full.txt), every
+page as one Markdown file.
 
 ## Development
 
