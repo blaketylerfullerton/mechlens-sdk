@@ -1,0 +1,8 @@
+/.pytest_cache/
+/.venv/
+/src/*.egg-info/
+__pycache__/
+/.mechlens/
+.env
+.env.*
+/site/
