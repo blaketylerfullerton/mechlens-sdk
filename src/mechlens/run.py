@@ -6,6 +6,7 @@ import os
 import subprocess
 import tempfile
 import uuid
+import warnings
 from collections.abc import Mapping
 from copy import deepcopy
 from datetime import datetime, timezone
@@ -13,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from .client import CloudClient, UploadReceipt
-from .errors import MechLensConfigurationError
+from .errors import MechLensConfigurationError, MechLensWarning
 
 if TYPE_CHECKING:
     from typing_extensions import Self
@@ -143,6 +144,7 @@ class Run:
         if not self._sealed:
             self.data["finished_at"] = _now()
             self._sealed = True
+            self._warn_unlogged_reported_metrics()
             self._save_local()
         return self.retry_upload()
 
@@ -180,6 +182,17 @@ class Run:
                 temporary.unlink(missing_ok=True)
                 raise
         os.replace(temporary, self.local_path)
+
+    def _warn_unlogged_reported_metrics(self) -> None:
+        paper = (self.data.get("experiment") or {}).get("reproduces") or {}
+        missing = sorted(set(paper.get("reported") or {}) - set(self.data["metrics"]))
+        if missing:
+            warnings.warn(
+                f"run {self.data['name']!r} reports paper values for {missing} but never logged them with "
+                "log_metrics; Cloud will show them as 'not logged'",
+                MechLensWarning,
+                stacklevel=3,
+            )
 
     def _ensure_open(self) -> None:
         if self._sealed:

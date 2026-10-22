@@ -9,6 +9,10 @@ class MechLensConfigurationError(MechLensError):
     """The SDK is missing configuration required to contact MechLens."""
 
 
+class MechLensWarning(UserWarning):
+    """Something about a run will weaken its evidence in Cloud, but it can still be recorded."""
+
+
 class MechLensUploadError(MechLensError):
     """An upload failed after the run was safely stored on disk.
 

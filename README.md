@@ -29,50 +29,52 @@ key, or create one under **Account → API keys**.
 export MECHLENS_API_KEY="ml_your_key_here"
 ```
 
-## Record a run
+## Record an experiment
+
+Declare the experiment once, then record a baseline and an intervention run
+over the same examples:
 
 ```python
 import mechlens
 
-run = mechlens.start_run(
-    project="refusal-steering",
-    name="baseline",
-    model={"id": "google/gemma-2-2b-it", "revision": "main"},
+exp = mechlens.experiment(
     question="Does steering SAE feature 4521 reduce refusals on benign prompts?",
+    claim="Steering feature 4521 at -4.0 lowers the refusal rate.",
+    deviations=["Refusals scored by substring matching"],
+    model={"id": "google/gemma-2-2b-it", "revision": "main"},
     dataset={"id": "borderline-benign-prompts", "revision": "v1", "split": "test"},
     generation={"temperature": 0.0, "max_new_tokens": 128},
     config={"seed": 42},
 )
 
-for example in prompts:
-    answer = generate(example["prompt"])
-    run.log_example(
-        id=example["id"],
-        input=example["prompt"],
-        output=answer,
-        refused=is_refusal(answer),
-    )
 
-run.log_metrics({"refusal_rate": refusal_rate})
-print(run.finish().url)
+def record(run, answer_fn):
+    for example in prompts:
+        answer = answer_fn(example["prompt"])
+        run.log_example(id=example["id"], input=example["prompt"], output=answer, refused=is_refusal(answer))
+    run.log_metrics({"refusal_rate": refusal_rate})
+
+
+with exp.baseline() as run:
+    record(run, generate)
+
+with exp.intervention(intervention={"type": "sae_feature_steering", "feature_id": 4521, "steering_strength": -4.0}) as run:
+    record(run, steered_generate)
+
+print(exp.url)
 ```
 
-Then record the intervention the same way: same `project`, same example IDs,
-same model, dataset and generation settings. Use a different `name` and
-describe the change in `intervention`:
+Open `exp.url` to see the comparison (whether the runs evaluated the same
+model, data, and examples; how each metric changed; which examples changed
+behavior) and a draft finding built from your declaration: the claim, the
+protocol, and candidate limitations. You write the conclusion.
 
-```python
-run = mechlens.start_run(
-    project="refusal-steering",
-    name="steered",
-    intervention={"type": "sae_feature_steering", "feature_id": 4521, "steering_strength": -4.0},
-    ...,
-)
-```
+Reproducing a paper? Add
+`reproduces=mechlens.Paper(arxiv="2406.11717", reported={"refusal_rate": {"baseline": 0.95, "intervention": 0.01}})`
+and Cloud creates the reproduction and shows the paper's numbers beside yours.
 
-Open the intervention run's URL to see the comparison: whether the runs
-evaluated the same model, data, and examples; how each metric changed; and the
-examples whose behavior changed.
+`mechlens.start_run()` still records single runs with every argument given
+explicitly.
 
 ## Good to know
 

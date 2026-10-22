@@ -177,3 +177,89 @@ def test_unreachable_cloud_names_the_url(tmp_path):
     assert error.retryable
     assert "https://cloud.example" in str(error)
     assert "MECHLENS_API_URL" in str(error)
+
+
+def recording_client(uploads):
+    def accept(request):
+        body = json.loads(request.content)
+        uploads.append(body)
+        return httpx.Response(201, json={"run_id": body["id"], "url": f"https://cloud.example/app/projects/p/runs/{body['id']}"})
+
+    return client(accept)
+
+
+def declared_experiment(tmp_path, uploads, **changes):
+    arguments = {
+        "question": "Does ablating the refusal direction remove refusals?",
+        "claim": "Ablation drops refusal from 0.95 to 0.01.",
+        "reproduces": mechlens.Paper(
+            arxiv="2406.11717", version="v3", reported={"refusal_rate": {"baseline": 0.95, "intervention": 0.01}}, where="Table 10"
+        ),
+        "deviations": ["Llama-3.1 instead of Llama-3"],
+        "model": {"id": "meta-llama/Llama-3.1-8B-Instruct", "revision": "abc"},
+        "dataset": {"id": "jailbreakbench", "revision": "v1", "split": "test"},
+        "config": {"seed": 42},
+        "code_commit": "abc",
+        "client": recording_client(uploads),
+        "local_dir": tmp_path,
+    }
+    arguments.update(changes)
+    return mechlens.experiment(**arguments)
+
+
+def test_experiment_records_two_declared_runs_and_links_the_comparison(tmp_path, capsys):
+    uploads = []
+    exp = declared_experiment(tmp_path, uploads)
+    assert exp.project == "reproduce-2406-11717"
+    with exp.baseline() as run:
+        run.log_metrics({"refusal_rate": 0.98})
+    assert exp.url is None  # not until both runs have uploaded
+    with exp.intervention(intervention={"type": "directional_ablation"}) as run:
+        run.log_metrics({"refusal_rate": 0.0})
+
+    baseline, intervention = uploads
+    assert capsys.readouterr().err.count("recording to project 'reproduce-2406-11717'") == 1
+    assert [baseline["schema_version"], intervention["schema_version"]] == [2, 2]
+    assert [baseline["name"], intervention["name"]] == ["baseline", "intervention"]
+    assert baseline["experiment"] == {
+        "role": "baseline",
+        "claim": "Ablation drops refusal from 0.95 to 0.01.",
+        "deviations": ["Llama-3.1 instead of Llama-3"],
+        "reproduces": {
+            "arxiv": "2406.11717",
+            "version": "v3",
+            "reported": {"refusal_rate": {"baseline": 0.95, "intervention": 0.01}},
+            "where": "Table 10",
+        },
+    }
+    assert intervention["experiment"]["role"] == "intervention"
+    assert baseline["intervention"] is None and intervention["intervention"] == {"type": "directional_ablation"}
+    assert baseline["dataset"] == intervention["dataset"] and baseline["config"] == intervention["config"]
+    assert exp.url == f"https://cloud.example/app/projects/p/runs/{intervention['id']}?baseline_id={baseline['id']}"
+
+
+def test_unlogged_reported_metric_warns_but_still_uploads(tmp_path):
+    uploads = []
+    exp = declared_experiment(tmp_path, uploads)
+    with pytest.warns(mechlens.MechLensWarning, match="refusal_rate"), exp.baseline() as run:
+        run.log_metrics({"refusal_score": 0.98})
+    assert len(uploads) == 1
+
+
+def test_plain_runs_stay_schema_version_1_and_experiment_inputs_are_validated(tmp_path):
+    uploads = []
+    run = mechlens.start_run(
+        project="p", name="n", model={"id": "m"}, config={}, question="q", code_commit="abc",
+        client=recording_client(uploads), local_dir=tmp_path,
+    )
+    run.finish()
+    assert uploads[0]["schema_version"] == 1 and "experiment" not in uploads[0]
+
+    assert declared_experiment(tmp_path, [], reproduces=None).project == "does-ablating-the-refusal-direction-remove-refusals"
+    assert declared_experiment(tmp_path, [], project="mine").project == "mine"
+    with pytest.raises(ValueError, match="deviations"):
+        declared_experiment(tmp_path, [], deviations=["ok", " "])
+    with pytest.raises(ValueError, match="finite number"):
+        declared_experiment(tmp_path, [], reproduces=mechlens.Paper(arxiv="2406.11717", reported={"x": {"baseline": float("nan")}}))
+    with pytest.raises(ValueError, match="project is shared"):
+        declared_experiment(tmp_path, []).baseline(project="other")

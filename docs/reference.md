@@ -10,6 +10,16 @@
 
 Arguments passed to [`start_run`][mechlens.start_run] override these.
 
+## Declaring an experiment
+
+::: mechlens.experiment
+
+::: mechlens.Experiment
+    options:
+      members: [baseline, intervention, url]
+
+::: mechlens.Paper
+
 ## Recording runs
 
 ::: mechlens.start_run
@@ -27,6 +37,8 @@ Arguments passed to [`start_run`][mechlens.start_run] override these.
 ::: mechlens.MechLensConfigurationError
 
 ::: mechlens.MechLensUploadError
+
+::: mechlens.MechLensWarning
 
 ## Advanced
 
