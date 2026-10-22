@@ -7,7 +7,7 @@ strict: true
 nav:
   - Overview: index.md
   - Quickstart: quickstart.md
-  - Recording a comparable pair: comparable-runs.md
+  - Recording comparable conditions: comparable-runs.md
   - What the checks mean: integrity-checks.md
   - API reference: reference.md
 

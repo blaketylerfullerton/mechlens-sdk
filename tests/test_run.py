@@ -207,22 +207,22 @@ def declared_experiment(tmp_path, uploads, **changes):
     return mechlens.experiment(**arguments)
 
 
-def test_experiment_records_two_declared_runs_and_links_the_comparison(tmp_path, capsys):
+def test_0_2_pair_api_records_a_two_condition_experiment(tmp_path, capsys):
     uploads = []
     exp = declared_experiment(tmp_path, uploads)
     assert exp.project == "reproduce-2406-11717"
+    assert exp.url is None  # not until a condition has uploaded
     with exp.baseline() as run:
         run.log_metrics({"refusal_rate": 0.98})
-    assert exp.url is None  # not until both runs have uploaded
     with exp.intervention(intervention={"type": "directional_ablation"}) as run:
         run.log_metrics({"refusal_rate": 0.0})
 
     baseline, intervention = uploads
-    assert capsys.readouterr().err.count("recording to project 'reproduce-2406-11717'") == 1
-    assert [baseline["schema_version"], intervention["schema_version"]] == [2, 2]
+    assert capsys.readouterr().err.count(f"recording experiment '{exp.id}' to project 'reproduce-2406-11717'") == 1
+    assert [baseline["schema_version"], intervention["schema_version"]] == [3, 3]
     assert [baseline["name"], intervention["name"]] == ["baseline", "intervention"]
     assert baseline["experiment"] == {
-        "role": "baseline",
+        "id": exp.id,
         "claim": "Ablation drops refusal from 0.95 to 0.01.",
         "deviations": ["Llama-3.1 instead of Llama-3"],
         "reproduces": {
@@ -231,11 +231,12 @@ def test_experiment_records_two_declared_runs_and_links_the_comparison(tmp_path,
             "reported": {"refusal_rate": {"baseline": 0.95, "intervention": 0.01}},
             "where": "Table 10",
         },
+        "condition": {"name": "baseline", "kind": "reference"},
     }
-    assert intervention["experiment"]["role"] == "intervention"
+    assert intervention["experiment"]["condition"] == {"name": "intervention", "kind": "intervention", "compare_to": []}
     assert baseline["intervention"] is None and intervention["intervention"] == {"type": "directional_ablation"}
     assert baseline["dataset"] == intervention["dataset"] and baseline["config"] == intervention["config"]
-    assert exp.url == f"https://cloud.example/app/projects/p/runs/{intervention['id']}?baseline_id={baseline['id']}"
+    assert exp.url == f"https://cloud.example/app/experiments/reproduce-2406-11717/{exp.id}"
 
 
 def test_unlogged_reported_metric_warns_but_still_uploads(tmp_path):

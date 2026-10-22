@@ -1,32 +1,34 @@
-# Recording a comparable pair
+# Recording comparable conditions
 
-A comparison is only as good as the two records behind it. If the runs used
-different prompts, model weights or decoding settings, a change in a metric
-might not come from your intervention. Cloud can only catch this when both runs
-record those details.
+A comparison is only as good as the two records behind it. If a condition used
+different prompts, model weights or decoding settings from the reference, a
+change in a metric might not come from your intervention. Cloud can only catch
+this when every run records those details.
 
 ## The rule
 
-> Record the same fields in both runs. Keep everything identical except the
-> intervention.
+> Record the same fields in every condition. Keep everything identical except
+> the intervention.
 
-Cloud compares the baseline and intervention runs field by field. When a
-field is missing from either run, Cloud reports it as **unknown**; it is never
-assumed to match. See [What the checks mean](integrity-checks.md).
+Cloud compares each condition with the reference, field by field, and with any
+other condition it declares in `compare_to`. When a field is missing from
+either side, Cloud reports it as **unknown**; it is never assumed to match.
+Declaring the experiment once with `mechlens.experiment()` shares these fields
+across conditions for you. See [What the checks mean](integrity-checks.md).
 
 ## What to record
 
 | Argument | Record | Why it matters |
 | --- | --- | --- |
-| `project` | The same string for both runs | Only runs in the same project can be compared. |
-| roles | `exp.baseline()` and `exp.intervention()` | Cloud pairs runs by their declared role. With plain `start_run`, a name starting with `baseline` or `control` marks the baseline. |
+| `project` | The same string for every condition | Only runs in the same project can be compared. |
+| conditions | `exp.reference()`, `exp.intervention()` and `exp.control()` | Cloud groups the runs into one experiment and compares each with the reference. With plain `start_run`, a name starting with `baseline` or `control` marks the baseline. |
 | `model` | `id` **and** `revision` | Without `revision`, Cloud can't confirm both runs used the same weights. |
 | `dataset` | `id`, `revision`, `split` | These three keys are always checked, and reported as unknown if missing. |
 | `generation` | Decoding settings: `temperature`, `max_new_tokens`, `do_sample` | A sampling change can shift outputs as much as an intervention. |
 | `config` | Any other settings, including `seed` | Every key is compared. |
-| `intervention` | Only on the intervention run | Should be the one difference between the runs. |
+| `intervention` | On every condition except the reference | Should be the one difference from the reference. |
 | `sae` | The SAE release, ID, and hook point, if you use one | A one-sided SAE is reported as a difference. |
-| `metric_definitions` | How each metric is calculated | Cloud checks that both runs define each metric the same way. |
+| `metric_definitions` | How each metric is calculated, and its `example_field` | Cloud checks that both runs define each metric the same way, and computes intervals from the linked field. |
 | `code_commit` | Usually automatic | Detected with `git rev-parse HEAD` when you run inside a repository. |
 
 ## Example IDs
@@ -35,7 +37,7 @@ Examples are matched across runs by `id`, not by position or prompt text.
 
 - **Use IDs that stay the same** across runs, such as dataset row IDs or
   hashes. Avoid loop counters if the order can change.
-- **Log the same set of IDs** in both runs. Examples logged in only one run
+- **Log the same set of IDs** in every condition. Examples logged in only one run
   are left out of the side-by-side view, and the coverage check reports the
   mismatch.
 - **Keep `input` identical** for each ID. If the same ID has different
@@ -56,7 +58,7 @@ run.log_example(
 ```
 
 Cloud marks an example as **behavior changed** when these extra fields differ
-between the two runs, and **output changed** when the text differs. Log the
+between two runs, and **output changed** when the text differs. Log the
 measurement your conclusion depends on here, such as a refusal label, a score,
 or a probability, so a reviewer can see which examples moved.
 
@@ -64,7 +66,7 @@ or a probability, so a reviewer can see which examples moved.
 
 Cloud looks for `seed` or `random_seed` in `generation` first, then in
 `config`, and compares the first one it finds in each run. Put the seed in the
-same place in both runs.
+same place in every condition.
 
 ## Metric definitions
 
@@ -81,12 +83,26 @@ Each description appears on the comparison page beneath the metric. If two runs
 report the same metric name with different definitions, the check reports a
 difference, so you know the numbers are not measuring the same thing.
 
+When a metric is the mean of a per-example field, name that field:
+
+```python
+metric_definitions={
+    "refusal_rate": {"description": "Share of prompts refused.", "example_field": "refused"},
+}
+```
+
+Cloud then computes each difference in `refusal_rate` from `refused` over the
+matched examples, with a 95% paired-bootstrap interval. A control that "has no
+effect" needs that interval to show how close to zero it is. Without
+`example_field`, Cloud shows the difference alone, and the draft finding lists
+the missing interval as a candidate limitation.
+
 ## A checklist before you compare
 
-- [ ] Same `project` in both runs
+- [ ] Same `project` in every condition
 - [ ] `model` includes `revision`
 - [ ] `dataset` includes `id`, `revision` and `split`
 - [ ] Same `generation` settings and seed
 - [ ] Same example IDs with identical inputs
-- [ ] `intervention` recorded only on the intervention run
-- [ ] `metric_definitions` for every metric you log
+- [ ] `intervention` recorded on every condition except the reference
+- [ ] `metric_definitions` for every metric you log, with `example_field` where it applies

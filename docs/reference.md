@@ -16,7 +16,7 @@ Arguments passed to [`start_run`][mechlens.start_run] override these.
 
 ::: mechlens.Experiment
     options:
-      members: [baseline, intervention, url]
+      members: [reference, intervention, control, baseline, url]
 
 ::: mechlens.Paper
 

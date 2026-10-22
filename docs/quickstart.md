@@ -1,7 +1,7 @@
 # Quickstart
 
-This walkthrough takes you from an empty environment to a baseline and an
-intervention run side by side in MechLens Cloud.
+This walkthrough takes you from an empty environment to a reference run, an
+intervention and a control side by side in MechLens Cloud.
 
 ## 1. Install the SDK
 
@@ -34,8 +34,8 @@ export MECHLENS_API_URL="http://localhost:5175"
 
 ## 3. Declare the experiment
 
-Describe the experiment once. Everything shared by the two runs goes here, so
-they are comparable by construction. Here `generate`, `is_refusal` and
+Describe the experiment once. Everything shared by the conditions goes here,
+so they are comparable by construction. Here `generate`, `is_refusal` and
 `prompts` stand in for your own code and data.
 
 ```python
@@ -43,7 +43,7 @@ import mechlens
 
 exp = mechlens.experiment(
     question="Does negatively steering SAE feature 4521 reduce refusals on benign prompts?",
-    claim="Steering feature 4521 at -4.0 lowers the refusal rate on borderline-benign prompts.",
+    claim="Steering feature 4521 at -4.0 lowers the refusal rate on borderline-benign prompts; a random feature does not.",
     deviations=["Refusals scored by substring matching, not human review"],
     model={"id": "google/gemma-2-2b-it", "revision": "main"},
     dataset={"id": "borderline-benign-prompts", "revision": "v1", "split": "test"},
@@ -54,7 +54,10 @@ exp = mechlens.experiment(
     },
     generation={"max_new_tokens": 128, "temperature": 0.0, "do_sample": False},
     metric_definitions={
-        "refusal_rate": {"description": "Share of prompts whose response declines to help."},
+        "refusal_rate": {
+            "description": "Share of prompts whose response declines to help.",
+            "example_field": "refused",
+        },
     },
     config={"seed": 42},
 )
@@ -63,10 +66,24 @@ exp = mechlens.experiment(
 `deviations` lists every way the experiment knowingly falls short of the ideal
 protocol. Each one becomes a candidate limitation when you write the finding.
 
-## 4. Record both runs
+`example_field` says which per-example field a metric averages. Cloud uses it
+to put a confidence interval on every difference in that metric. Without it,
+you get the difference alone; `finish()` warns when a metric looks like the
+mean of an example field you haven't linked.
 
-Run the same examples, with the same IDs, through both conditions. Only the
-intervention run describes what it changes.
+## 4. Record the conditions
+
+Run the same examples, with the same IDs, through every condition. The
+reference changes nothing; every other condition describes what it changes.
+
+- An **intervention** changes the model in the way your claim is about.
+- A **control** is one your claim predicts should *not* have the effect, such
+  as steering a random feature instead.
+
+Declare what you expect each condition to do, relative to the reference,
+before you see the results. If the claim depends on a comparison between two
+non-reference conditions, such as the intervention against its control,
+declare that too with `compare_to`.
 
 ```python
 def record(run, answer_fn):
@@ -79,27 +96,65 @@ def record(run, answer_fn):
     run.log_metrics({"refusal_rate": refusals / len(prompts)})
 
 
-with exp.baseline() as run:
+with exp.reference() as run:
     record(run, generate)
 
 with exp.intervention(
+    "steer-4521",
     intervention={"type": "sae_feature_steering", "feature_id": 4521, "steering_strength": -4.0},
+    expect={"refusal_rate": "decrease"},
+    compare_to=["steer-random-feature"],
 ) as run:
     record(run, lambda prompt: generate_with_steering(prompt, feature_id=4521, strength=-4.0))
+
+with exp.control(
+    "steer-random-feature",
+    intervention={"type": "sae_feature_steering", "feature_id": 9113, "steering_strength": -4.0},
+    expect={"refusal_rate": "no_effect"},
+) as run:
+    record(run, lambda prompt: generate_with_steering(prompt, feature_id=9113, strength=-4.0))
 
 print(exp.url)
 ```
 
 Leaving each `with` block saves the run locally and uploads it. The project
-name is chosen for you and printed when the first run starts; pass
-`project=` to `experiment()` to choose your own.
+and experiment are chosen for you and printed when the first run starts; pass
+`project=` and `id=` to `experiment()` to choose your own.
+
+### Sweeps
+
+For a dose-response, record one condition per level of the same `series`. The
+name defaults to `<series>@<level>`, and Cloud plots the series as a curve:
+
+```python
+for strength in (-1.0, -2.0, -4.0, -8.0):
+    with exp.intervention(
+        series="steering_strength",
+        level=strength,
+        intervention={"type": "sae_feature_steering", "feature_id": 4521, "steering_strength": strength},
+        expect={"refusal_rate": "decrease"},
+    ) as run:
+        record(run, lambda prompt: generate_with_steering(prompt, feature_id=4521, strength=strength))
+```
+
+### Conditions in separate jobs
+
+Conditions don't have to run in one process. Run the same declaration in each
+job, a job array or a restarted notebook, and record only that job's
+condition; they all join one experiment, because its ID is derived from the
+project, question and claim. Changing the claim starts a new experiment.
+
+Recording a condition name again counts as a rerun: Cloud uses the latest run
+and lists the earlier ones as superseded, so reruns stay visible.
 
 ## 5. Review the draft and write the finding
 
-Open `exp.url`. Cloud pairs the two runs by their declared roles and shows:
+Open `exp.url`. Cloud compares every condition with the reference, and shows:
 
-- whether the two runs evaluated the same model, dataset, and examples
-- each metric's baseline value, intervention value, and change
+- whether each condition evaluated the same model, dataset, and examples as
+  the reference
+- each metric's value per condition, its difference from the reference with a
+  confidence interval, and your declared expectation beside it
 - the examples whose recorded behavior changed, side by side
 - a field-by-field table of [comparison checks](integrity-checks.md)
 - a **draft finding**: your claim, the protocol, and candidate limitations
@@ -110,8 +165,9 @@ publish when you are ready to share. Cloud never writes the conclusion for you.
 
 ### Reproducing a paper
 
-Add the paper and the values it reports. Use the metric names you log, so Cloud
-can show the paper's numbers beside yours:
+Add the paper and the values it reports. Use the metric names you log and the
+condition names you record, so Cloud can show the paper's numbers beside
+yours:
 
 ```python
 exp = mechlens.experiment(
@@ -120,7 +176,7 @@ exp = mechlens.experiment(
     reproduces=mechlens.Paper(
         arxiv="2406.11717",
         version="v3",
-        reported={"refusal_rate": {"baseline": 0.95, "intervention": 0.01}},
+        reported={"refusal_rate": {"reference": 0.95, "ablate-refusal-direction": 0.01}},
         where="Table 10",
     ),
     deviations=["Llama-3.1 8B Instruct instead of Llama-3 8B Instruct"],
@@ -136,7 +192,7 @@ reproduced is still your call.
 
 `mechlens.start_run()` records a single run with every argument given
 explicitly. It still works, and Cloud compares two such runs the same way, but
-it can't draft a finding because nothing declares the claim or the roles.
+it can't draft a finding because nothing declares the claim or the conditions.
 
 ## Try it without a model
 

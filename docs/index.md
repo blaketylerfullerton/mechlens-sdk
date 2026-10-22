@@ -1,8 +1,8 @@
 # MechLens SDK
 
 The MechLens SDK records model experiments from the Python code you already have
-and sends them to MechLens Cloud, where you compare a baseline against an
-intervention, review the evidence, and publish a finding.
+and sends them to MechLens Cloud, where you compare a reference run against
+interventions and controls, review the evidence, and publish a finding.
 
 Your code still loads the model, runs the intervention, and calculates the
 metrics. The SDK adds only a few calls:
@@ -27,11 +27,12 @@ TransformerLens, or any SAE library.
 
 ## How it fits together
 
-1. **Record two runs** of the same examples: a baseline and an intervention.
-2. **Cloud compares them** field by field: model, dataset, seed, config,
-   metric definitions, and which examples match.
-3. **You review the evidence**: metric changes and the examples whose
-   behavior changed.
+1. **Record the conditions** over the same examples: a reference, and the
+   interventions and controls compared with it.
+2. **Cloud compares each with the reference** field by field: model, dataset,
+   seed, config, metric definitions, and which examples match.
+3. **You review the evidence**: metric changes with their intervals, beside
+   what you expected, and the examples whose behavior changed.
 4. **You write a finding**, with a conclusion and its limitations, and
    publish it as a page anyone with the link can view.
 

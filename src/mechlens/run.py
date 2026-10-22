@@ -145,6 +145,8 @@ class Run:
             self.data["finished_at"] = _now()
             self._sealed = True
             self._warn_unlogged_reported_metrics()
+            self._warn_unlogged_expected_metrics()
+            self._warn_unlinked_metrics()
             self._save_local()
         return self.retry_upload()
 
@@ -193,6 +195,52 @@ class Run:
                 MechLensWarning,
                 stacklevel=3,
             )
+
+    def _warn_unlogged_expected_metrics(self) -> None:
+        condition = (self.data.get("experiment") or {}).get("condition") or {}
+        missing = sorted(set(condition.get("expect") or {}) - set(self.data["metrics"]))
+        if missing:
+            warnings.warn(
+                f"condition {self.data['name']!r} declares expectations for {missing} but never logged them "
+                "with log_metrics; Cloud will show them as 'not logged'",
+                MechLensWarning,
+                stacklevel=3,
+            )
+
+    def _warn_unlinked_metrics(self) -> None:
+        """Point at the example field a metric seems to average, so Cloud can compute its interval."""
+        if "experiment" not in self.data or not self.data["examples"]:
+            return
+        definitions = self.data.get("metric_definitions") or {}
+        examples = self.data["examples"]
+        means: dict[str, float] = {}
+        for key in set(examples[0]) - {"id", "input", "output"}:
+            values = [example.get(key) for example in examples]
+            if all(isinstance(value, (bool, int, float)) for value in values):
+                means[key] = sum(values) / len(values)
+        for metric, value in sorted(self.data["metrics"].items()):
+            definition = definitions.get(metric)
+            linked = definition.get("example_field") if isinstance(definition, Mapping) else None
+            if linked is not None:
+                if linked not in means:
+                    warnings.warn(
+                        f"metric {metric!r} is linked to example field {linked!r}, but not every example in "
+                        f"condition {self.data['name']!r} has a numeric {linked!r}; Cloud cannot compute its interval",
+                        MechLensWarning,
+                        stacklevel=3,
+                    )
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                continue
+            matches = sorted(key for key, mean in means.items() if math.isclose(mean, value, rel_tol=1e-9, abs_tol=1e-12))
+            if matches:
+                fields = " or ".join(repr(key) for key in matches)
+                warnings.warn(
+                    f"metric {metric!r} equals the mean of example field {fields}; add "
+                    f"\"example_field\": {matches[0]!r} to its metric definition so Cloud can show its interval",
+                    MechLensWarning,
+                    stacklevel=3,
+                )
 
     def _ensure_open(self) -> None:
         if self._sealed:
