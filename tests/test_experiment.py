@@ -206,3 +206,25 @@ def test_experiment_level_inputs_are_validated(tmp_path):
         specificity(tmp_path, [], id="Has Spaces")
     with pytest.raises(ValueError, match="example_field"):
         specificity(tmp_path, [], metric_definitions={"refusal_rate": {"example_field": 3}})
+
+
+def test_0_2_keyword_names_still_work(tmp_path):
+    uploads = []
+    exp = specificity(tmp_path, uploads)
+    with exp.baseline(name="baseline-run") as run:
+        log_refusals(run, [True])
+    with exp.intervention(name="ablated") as run:
+        log_refusals(run, [False])
+    assert [upload["name"] for upload in uploads] == ["baseline-run", "ablated"]
+    assert uploads[0]["experiment"]["condition"]["kind"] == "reference"
+
+
+def test_url_is_none_for_a_client_without_a_base_url(tmp_path):
+    class LocalOnly:
+        def upload_run(self, data, *, local_path):
+            return mechlens.UploadReceipt(run_id=str(data["id"]), url=local_path.as_uri())
+
+    exp = specificity(tmp_path, [], client=LocalOnly())
+    with exp.reference() as run:
+        log_refusals(run, [True])
+    assert exp.url is None

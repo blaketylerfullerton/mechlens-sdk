@@ -112,8 +112,8 @@ class Experiment:
         return run
 
     def baseline(self, **overrides: Any) -> Run:
-        """Start the reference run under the name `baseline`. Kept from SDK 0.2."""
-        return self.reference("baseline", **overrides)
+        """Start the reference run, named `baseline` unless `name=` says otherwise. Kept from SDK 0.2."""
+        return self.reference(overrides.pop("name", "baseline"), **overrides)
 
     def intervention(
         self,
@@ -176,10 +176,14 @@ class Experiment:
 
     @property
     def url(self) -> str | None:
-        """The experiment page, once this process has uploaded a condition; otherwise `None`."""
+        """The experiment page, once this process has uploaded a condition; otherwise `None`.
+
+        Also `None` with a custom client that has no `base_url`.
+        """
         for run in self.runs.values():
-            if run._receipt is not None:
-                return f"{run.client.base_url}/app/experiments/{quote(self.project, safe='')}/{quote(self.id, safe='')}"
+            base_url = getattr(run.client, "base_url", None)
+            if run._receipt is not None and base_url:
+                return f"{base_url}/app/experiments/{quote(self.project, safe='')}/{quote(self.id, safe='')}"
         return None
 
     def _condition(
