@@ -154,8 +154,10 @@ limitation, so silent best-of-N reruns stay visible.
 
 ### Behaviour
 
-- `exp.reference()` replaces `exp.baseline()`; `baseline()` stays as an
-  alias. `exp.intervention()` with no name and no series keeps its 0.2
+- `exp.reference()` replaces `exp.baseline()`. Its name defaults to
+  `reference`; `baseline()` stays, recording the reference under the name
+  `baseline`, so 0.2 paper values keyed `baseline`/`intervention` still match
+  condition names. `exp.intervention()` with no name and no series keeps its 0.2
   meaning: a condition named `intervention`.
 - Within one `Experiment` object, condition names must be unique and a second
   `reference()` raises. Across processes, a repeated name is a rerun (see
