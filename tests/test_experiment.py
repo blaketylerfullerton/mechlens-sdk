@@ -79,6 +79,44 @@ def test_reference_intervention_and_control_record_their_kinds_and_declarations(
     assert set(exp.runs) == {c["name"] for c in conditions}
 
 
+def test_correction_uses_schema_v4_and_is_top_level(tmp_path):
+    uploads = []
+    correction = mechlens.Correction(supersedes=" old-run ", reason=" Wrong candidate pool. ")
+    with specificity(tmp_path, uploads).control("random", correction=correction) as run:
+        log_refusals(run, [True, False])
+
+    assert uploads[0]["schema_version"] == 4
+    assert uploads[0]["correction"] == {"supersedes": "old-run", "reason": "Wrong candidate pool."}
+    assert "correction" not in uploads[0]["experiment"]["condition"]
+    serialized = correction.to_json()
+    serialized["reason"] = "changed"
+    assert correction.to_json()["reason"] == "Wrong candidate pool."
+
+
+@pytest.mark.parametrize(
+    ("correction", "error", "message"),
+    [
+        (mechlens.Correction(supersedes="", reason="why"), ValueError, "supersedes"),
+        (mechlens.Correction(supersedes="old", reason=" "), ValueError, "reason"),
+        ("not a correction", TypeError, "mechlens.Correction"),
+    ],
+)
+def test_invalid_correction_is_rejected_before_run_starts(tmp_path, correction, error, message):
+    exp = specificity(tmp_path, [])
+    with pytest.raises(error, match=message):
+        exp.control("random", correction=correction)
+    assert exp.runs == {}
+
+
+@pytest.mark.parametrize("method,name", [("reference", "reference"), ("intervention", "x"), ("control", "x")])
+def test_correction_is_accepted_by_every_condition_kind(tmp_path, method, name):
+    uploads = []
+    exp = specificity(tmp_path, uploads)
+    with getattr(exp, method)(name, correction=mechlens.Correction("old", "fix")) as run:
+        log_refusals(run, [True])
+    assert uploads[0]["schema_version"] == 4
+
+
 def test_sweep_conditions_are_named_from_series_and_level(tmp_path):
     uploads = []
     exp = specificity(tmp_path, uploads)

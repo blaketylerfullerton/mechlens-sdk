@@ -52,6 +52,25 @@ class Paper:
         return {"arxiv": self.arxiv.strip(), "version": self.version, "reported": reported, "where": self.where}
 
 
+@dataclass(frozen=True)
+class Correction:
+    """Declare that a run corrects one exact earlier run.
+
+    The reason becomes public evidence metadata if an affected finding was
+    published. Do not include secrets or sensitive participant information.
+    """
+
+    supersedes: str
+    reason: str
+
+    def to_json(self) -> dict[str, str]:
+        if not isinstance(self.supersedes, str) or not self.supersedes.strip():
+            raise ValueError("Correction.supersedes must be a non-empty run ID")
+        if not isinstance(self.reason, str) or not self.reason.strip():
+            raise ValueError("Correction.reason must be a non-empty explanation")
+        return {"supersedes": self.supersedes.strip(), "reason": self.reason.strip()}
+
+
 def _slug(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")[:60].strip("-") or "experiment"
 
@@ -90,7 +109,7 @@ class Experiment:
         self._reference: str | None = None
         self._announced = False
 
-    def reference(self, name: str = "reference", **overrides: Any) -> Run:
+    def reference(self, name: str = "reference", *, correction: Correction | None = None, **overrides: Any) -> Run:
         """Start the reference run, which every other condition is compared with.
 
         Args:
@@ -107,7 +126,7 @@ class Experiment:
         """
         if self._reference is not None:
             raise ValueError(f"this experiment already has a reference, {self._reference!r}")
-        run = self._start(name, {"kind": "reference"}, overrides)
+        run = self._start(name, {"kind": "reference"}, correction, overrides)
         self._reference = run.data["name"]
         return run
 
@@ -123,6 +142,7 @@ class Experiment:
         compare_to: Sequence[str] = (),
         series: str | None = None,
         level: float | None = None,
+        correction: Correction | None = None,
         **overrides: Any,
     ) -> Run:
         """Start a condition that changes the model in the way the claim is about.
@@ -148,7 +168,7 @@ class Experiment:
         """
         if name is None and series is None:
             name = "intervention"
-        return self._condition("intervention", name, expect, compare_to, series, level, overrides)
+        return self._condition("intervention", name, expect, compare_to, series, level, correction, overrides)
 
     def control(
         self,
@@ -158,6 +178,7 @@ class Experiment:
         compare_to: Sequence[str] = (),
         series: str | None = None,
         level: float | None = None,
+        correction: Correction | None = None,
         **overrides: Any,
     ) -> Run:
         """Start a condition the claim predicts should not have the intervention's effect.
@@ -172,7 +193,7 @@ class Experiment:
         """
         if name is None and series is None:
             raise ValueError("control() needs a name, such as 'random-direction'")
-        return self._condition("control", name, expect, compare_to, series, level, overrides)
+        return self._condition("control", name, expect, compare_to, series, level, correction, overrides)
 
     @property
     def url(self) -> str | None:
@@ -194,6 +215,7 @@ class Experiment:
         compare_to: Sequence[str],
         series: str | None,
         level: float | None,
+        correction: Correction | None,
         overrides: dict[str, Any],
     ) -> Run:
         if (series is None) != (level is None):
@@ -223,9 +245,9 @@ class Experiment:
         if self._reference is not None and self._reference in others:
             raise ValueError(f"{self._reference!r} is the reference, which every condition is compared with already")
         condition["compare_to"] = others
-        return self._start(name, condition, overrides)
+        return self._start(name, condition, correction, overrides)
 
-    def _start(self, name: str | None, condition: dict[str, Any], overrides: dict[str, Any]) -> Run:
+    def _start(self, name: str | None, condition: dict[str, Any], correction: Correction | None, overrides: dict[str, Any]) -> Run:
         if not isinstance(name, str) or not name.strip():
             raise ValueError("condition name must be a non-empty string")
         name = name.strip()
@@ -236,9 +258,16 @@ class Experiment:
         if not self._announced:
             print(f"mechlens: recording experiment '{self.id}' to project '{self.project}'", file=sys.stderr)
             self._announced = True
+        if correction is not None and not isinstance(correction, Correction):
+            raise TypeError("correction must be a mechlens.Correction")
+        correction_json = correction.to_json() if correction is not None else None
         run = start_run(**{**self.shared, **overrides, "name": name})
-        run.data["schema_version"] = 3
+        if correction_json is not None and correction_json["supersedes"] == str(run.data["id"]):
+            raise ValueError("a run cannot supersede itself")
+        run.data["schema_version"] = 4 if correction_json is not None else 3
         run.data["experiment"] = {"id": self.id, **self.declaration, "condition": {"name": name, **condition}}
+        if correction_json is not None:
+            run.data["correction"] = correction_json
         self.runs[name] = run
         return run
 

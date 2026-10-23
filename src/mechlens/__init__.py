@@ -8,11 +8,12 @@ from .errors import (
     MechLensUploadError,
     MechLensWarning,
 )
-from .experiment import Experiment, Paper, experiment
+from .experiment import Correction, Experiment, Paper, experiment
 from .run import Run, start_run
 
 __all__ = [
     "CloudClient",
+    "Correction",
     "Experiment",
     "MechLensConfigurationError",
     "MechLensError",
