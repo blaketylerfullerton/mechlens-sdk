@@ -144,8 +144,38 @@ job, a job array or a restarted notebook, and record only that job's
 condition; they all join one experiment, because its ID is derived from the
 project, question and claim. Changing the claim starts a new experiment.
 
-Recording a condition name again counts as a rerun: Cloud uses the latest run
-and lists the earlier ones as superseded, so reruns stay visible.
+Recording a condition name again in a later process counts as a rerun: Cloud
+uses the latest run and lists the earlier ones as superseded, so reruns stay
+visible. Within one process, an experiment records each condition name once.
+
+### Correcting a run
+
+!!! note "Not yet released"
+    `Correction` is in the repository but not in a published version of the
+    package. It arrives with the next release.
+
+A rerun doesn't say why it replaced the earlier run. When the earlier run was
+wrong, say so with a [`Correction`][mechlens.Correction] naming that run's ID:
+the `run_id` on its upload receipt, or its file in `.mechlens/runs/`.
+
+```python
+with exp.control(
+    "steer-random-feature",
+    intervention={"type": "sae_feature_steering", "feature_id": 9113, "steering_strength": -4.0},
+    correction=mechlens.Correction(
+        supersedes="f9ad0f0a-6a67-4d2e-b879-2a0f94260ec8",
+        reason="The original control sampled features outside the SAE's width.",
+    ),
+) as run:
+    record(run, lambda prompt: generate_with_steering(prompt, feature_id=9113, strength=-4.0))
+```
+
+Cloud keeps the earlier run, makes the corrected one current, and flags
+findings that relied on the earlier run so you can review them. It rejects a
+correction when the earlier run is no longer the condition's current run, when
+the project, experiment declaration or condition name differ, or when the
+corrected run finishes before the one it replaces. The reason becomes public
+if an affected finding was published, so leave out secrets.
 
 ## 5. Review the draft and write the finding
 
@@ -216,8 +246,10 @@ Cloud's explanation and what to do next.
 - If `error.retryable` is true (Cloud was unreachable or had a server error),
   retry in the same process with `run.retry_upload()`.
 - If it is false, retrying the same run won't help. A `401` means the API key
-  is wrong or revoked; a `422` means Cloud rejected the run's contents. Fix the
-  cause and record the run again.
+  is wrong or revoked; a `422` means Cloud rejected the run's contents; a
+  `409` means Cloud already holds a different run with that ID, or a
+  correction's target is no longer current. Fix the cause and record the run
+  again.
 
 ```python
 try:

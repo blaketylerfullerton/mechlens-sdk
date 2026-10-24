@@ -47,19 +47,20 @@ plugins:
   - llmstxt:
       full_output: llms-full.txt
       markdown_description: >
-        The MechLens SDK (`pip install mechlens`) records a baseline and an intervention run
-        from existing Python experiment code and uploads them to MechLens Cloud, which checks
-        that the runs are comparable and helps publish a finding. Record the same fields in
-        both runs, use the same project and stable example IDs, and change only the intervention.
+        The MechLens SDK (`pip install mechlens`) records an experiment from existing Python
+        code, a reference run plus the interventions and controls compared with it, and uploads
+        the runs to MechLens Cloud, which checks that they are comparable and helps publish a
+        finding. Declare the experiment once with `mechlens.experiment()`, record the same
+        fields in every condition, use stable example IDs, and change only the intervention.
       sections:
         Getting started:
           - index.md: What the SDK does and how runs become a finding
-          - quickstart.md: Install, authenticate, record a baseline and an intervention run
-        Recording comparable runs:
-          - comparable-runs.md: Which fields to record in both runs and why
+          - quickstart.md: Install, authenticate, declare an experiment, record its conditions
+        Recording comparable conditions:
+          - comparable-runs.md: Which fields to record in every condition and why
           - integrity-checks.md: What Cloud's comparison checks verify, and what they do not
         Reference:
-          - reference.md: start_run, Run, errors, and environment variables
+          - reference.md: experiment, Experiment, Paper, Correction, start_run, Run, errors, and environment variables
   - autorefs
   - mkdocstrings:
       handlers:

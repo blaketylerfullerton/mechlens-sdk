@@ -8,7 +8,8 @@
 | `MECHLENS_API_URL` | `https://mechlens.dev` | The MechLens Cloud deployment to upload to. |
 | `MECHLENS_DIR` | `.mechlens/runs` | Where finished runs are saved as JSON. |
 
-Arguments passed to [`start_run`][mechlens.start_run] override these.
+Arguments passed to [`experiment`][mechlens.experiment] or
+[`start_run`][mechlens.start_run] override these.
 
 ## Declaring an experiment
 
@@ -19,6 +20,8 @@ Arguments passed to [`start_run`][mechlens.start_run] override these.
       members: [reference, intervention, control, baseline, url]
 
 ::: mechlens.Paper
+
+::: mechlens.Correction
 
 ## Recording runs
 

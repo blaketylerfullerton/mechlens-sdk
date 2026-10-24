@@ -21,7 +21,7 @@ across conditions for you. See [What the checks mean](integrity-checks.md).
 | Argument | Record | Why it matters |
 | --- | --- | --- |
 | `project` | The same string for every condition | Only runs in the same project can be compared. |
-| conditions | `exp.reference()`, `exp.intervention()` and `exp.control()` | Cloud groups the runs into one experiment and compares each with the reference. With plain `start_run`, a name starting with `baseline` or `control` marks the baseline. |
+| conditions | `exp.reference()`, `exp.intervention()` and `exp.control()` | Cloud groups the runs into one experiment and compares each with the reference. With plain `start_run`, a name with `baseline` or `control` as a whole word, such as `baseline` or `my-baseline-v2`, is chosen as the default baseline. |
 | `model` | `id` **and** `revision` | Without `revision`, Cloud can't confirm both runs used the same weights. |
 | `dataset` | `id`, `revision`, `split` | These three keys are always checked, and reported as unknown if missing. |
 | `generation` | Decoding settings: `temperature`, `max_new_tokens`, `do_sample` | A sampling change can shift outputs as much as an intervention. |
@@ -72,16 +72,14 @@ same place in every condition.
 
 ```python
 metric_definitions={
-    "refusal_rate": {
-        "description": "Share of prompts whose response declines to help.",
-        "direction": "lower_is_better",
-    },
+    "refusal_rate": {"description": "Share of prompts whose response declines to help."},
 }
 ```
 
 Each description appears on the comparison page beneath the metric. If two runs
 report the same metric name with different definitions, the check reports a
-difference, so you know the numbers are not measuring the same thing.
+difference, so you know the numbers are not measuring the same thing. Cloud
+compares a definition as a whole, so any other key you add to it counts too.
 
 When a metric is the mean of a per-example field, name that field:
 

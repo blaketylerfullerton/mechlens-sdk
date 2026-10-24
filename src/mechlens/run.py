@@ -282,8 +282,9 @@ def start_run(
     Args:
         project: Groups runs that can be compared, such as a baseline and its
             intervention.
-        name: This run's label within the project. A name containing `baseline` or
-            `control` is chosen as the default baseline in Cloud.
+        name: This run's label within the project. A name with `baseline` or
+            `control` as a whole word, such as `baseline` or `my-baseline-v2`, is
+            chosen as the default baseline in Cloud.
         model: Must include `id`. Include `revision` so the comparison can confirm
             both runs used the same weights.
         config: Any other settings for this run, such as `seed` or

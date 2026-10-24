@@ -1,8 +1,9 @@
 # What the checks mean
 
-When you open a comparison, MechLens Cloud checks the two run records against
-each other. The checks answer one question: **do these records show that the
-two runs are comparable?**
+When you open a comparison, MechLens Cloud checks two run records against each
+other: each condition of an experiment against the reference, and any pair you
+declared with `compare_to`. The checks answer one question: **do these records
+show that the two runs are comparable?**
 
 ## What the checks do and don't tell you
 
@@ -29,7 +30,7 @@ Each check has one of four statuses:
 
 **Unknown is not a pass.** A comparison where every field is unknown has not
 been checked at all. To turn unknowns into results, record the field in both
-runs (see [Recording a comparable pair](comparable-runs.md)).
+runs (see [Recording comparable conditions](comparable-runs.md)).
 
 ## What is checked
 

@@ -56,8 +56,21 @@ class Paper:
 class Correction:
     """Declare that a run corrects one exact earlier run.
 
+    Pass it as the `correction` of the condition that replaces the earlier run.
+    Cloud keeps the earlier run, makes the corrected one current, and flags
+    findings that relied on the earlier run so you can review them. Cloud
+    rejects a correction unless the earlier run is the condition's current run,
+    in the same project and experiment with the same declaration, and the
+    corrected run finishes at or after it. A condition recorded again without a
+    correction is an ordinary rerun.
+
     The reason becomes public evidence metadata if an affected finding was
     published. Do not include secrets or sensitive participant information.
+
+    Attributes:
+        supersedes: The ID of the run being corrected, as in its local
+            `.mechlens/runs/<run-id>.json` file or its upload receipt's `run_id`.
+        reason: Why the earlier run was wrong.
     """
 
     supersedes: str
@@ -114,6 +127,8 @@ class Experiment:
 
         Args:
             name: The condition's name. Use the name your paper values are keyed by.
+            correction: Declares that this run corrects one exact earlier run. See
+                [`Correction`][mechlens.Correction].
             **overrides: Any [`start_run`][mechlens.start_run] argument, replacing
                 the shared value for this run only. Cloud's comparison checks
                 report any shared field you change.
@@ -123,6 +138,7 @@ class Experiment:
 
         Raises:
             ValueError: A reference was already started by this experiment.
+            TypeError: `correction` is not a [`Correction`][mechlens.Correction].
         """
         if self._reference is not None:
             raise ValueError(f"this experiment already has a reference, {self._reference!r}")
@@ -160,11 +176,19 @@ class Experiment:
             series: Groups conditions that differ only in `level`, such as a
                 steering-coefficient sweep. Cloud plots a series as a curve.
             level: This condition's position in the series.
+            correction: Declares that this run corrects one exact earlier run. See
+                [`Correction`][mechlens.Correction].
             **overrides: Any [`start_run`][mechlens.start_run] argument, replacing
                 the shared value for this run only.
 
         Returns:
             An open run, usable as a context manager.
+
+        Raises:
+            ValueError: The name is blank or already recorded by this experiment,
+                `series` and `level` are not given together, `expect` or
+                `compare_to` is malformed, or a condition is compared with itself.
+            TypeError: `correction` is not a [`Correction`][mechlens.Correction].
         """
         if name is None and series is None:
             name = "intervention"

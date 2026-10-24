@@ -10,16 +10,21 @@ metrics. The SDK adds only a few calls:
 ```python
 import mechlens
 
-run = mechlens.start_run(
-    project="refusal-steering",
-    name="baseline",
-    model={"id": "google/gemma-2-2b-it", "revision": "main"},
+exp = mechlens.experiment(
     question="Does steering this feature reduce refusals?",
+    model={"id": "google/gemma-2-2b-it", "revision": "main"},
     config={"seed": 42},
 )
-run.log_example(id="lockout-001", input=prompt, output=answer, refused=False)
-run.log_metrics({"refusal_rate": 0.25})
-print(run.finish().url)
+
+with exp.reference() as run:
+    run.log_example(id="lockout-001", input=prompt, output=answer, refused=True)
+    run.log_metrics({"refusal_rate": 1.0})
+
+with exp.intervention("steer-4521", intervention={"feature_id": 4521, "steering_strength": -4.0}) as run:
+    run.log_example(id="lockout-001", input=prompt, output=steered_answer, refused=False)
+    run.log_metrics({"refusal_rate": 0.0})
+
+print(exp.url)
 ```
 
 The SDK depends only on `httpx` and `python-dotenv`. It does not need Torch,
@@ -40,7 +45,7 @@ TransformerLens, or any SAE library.
 
 - New here? Start with the [Quickstart](quickstart.md).
 - Getting a warning on the comparison page? Read
-  [Recording a comparable pair](comparable-runs.md).
+  [Recording comparable conditions](comparable-runs.md).
 - Wondering what "unknown" or "differs" means? See
   [What the checks mean](integrity-checks.md).
 - Looking up an argument? See the [API reference](reference.md).

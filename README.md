@@ -95,6 +95,11 @@ protocol, and candidate limitations. You write the conclusion.
   keyed by your condition names, and Cloud shows the paper's numbers beside
   yours.
 
+- **A run turned out wrong?** Record it again with
+  `correction=mechlens.Correction(supersedes=<run id>, reason=...)` so Cloud
+  keeps the old run and flags findings that relied on it. This is not in a
+  published release yet.
+
 `mechlens.start_run()` still records single runs with every argument given
 explicitly.
 
@@ -145,7 +150,7 @@ reference is generated from the docstrings in `src/mechlens`. Run
 so broken links fail.
 
 **Releasing.** Bump `__version__` in `src/mechlens/_version.py`, commit, and
-push a matching tag (`v0.1.1`). The release workflow tests, builds, and
+push a matching tag (such as `v0.3.2`). The release workflow tests, builds, and
 publishes to PyPI with Trusted Publishing.
 
 **Cloud contract.** The SDK sends `POST /api/sdk/runs` with
