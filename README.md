@@ -2,7 +2,7 @@
 
 Record mechanistic-interpretability experiments from the Python code you
 already have, and compare a reference run against interventions and controls in
-[MechLens Cloud](https://mechlens-cloud-fgstc.ondigitalocean.app).
+[MechLens Cloud](https://mechlens.dev).
 
 Your code still loads the model, runs the intervention, and calculates the
 metrics. The SDK records what you ran so Cloud can check the runs are

@@ -26,7 +26,7 @@ classifiers = [
 dependencies = ["httpx>=0.27,<1", "python-dotenv>=1,<2"]
 
 [project.urls]
-Homepage = "https://mechlens-cloud-fgstc.ondigitalocean.app"
+Homepage = "https://mechlens.dev"
 Documentation = "https://blaketylerfullerton.github.io/mechlens-sdk/"
 Source = "https://github.com/blaketylerfullerton/mechlens-sdk"
 Issues = "https://github.com/blaketylerfullerton/mechlens-sdk/issues"

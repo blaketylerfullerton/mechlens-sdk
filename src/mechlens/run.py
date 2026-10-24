@@ -19,7 +19,7 @@ from .errors import MechLensConfigurationError, MechLensWarning
 if TYPE_CHECKING:
     from typing_extensions import Self
 
-DEFAULT_API_URL = "https://mechlens-cloud-fgstc.ondigitalocean.app"
+DEFAULT_API_URL = "https://mechlens.dev"
 
 
 def _now() -> str:
@@ -301,7 +301,7 @@ def start_run(
             `git rev-parse HEAD` when omitted.
         api_key: Overrides the `MECHLENS_API_KEY` environment variable.
         base_url: Overrides `MECHLENS_API_URL`. Defaults to MechLens Cloud,
-            `https://mechlens-cloud-fgstc.ondigitalocean.app`.
+            `https://mechlens.dev`.
         local_dir: Overrides `MECHLENS_DIR`, where finished runs are saved.
             Defaults to `.mechlens/runs`.
         client: A preconfigured [`CloudClient`][mechlens.CloudClient], mainly for
